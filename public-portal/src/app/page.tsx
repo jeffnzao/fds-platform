@@ -5,8 +5,8 @@ import CTASection from '@/components/CTASection'
 import PresidentMessage from '@/components/PresidentMessage'
 
 export const metadata = {
-  title: 'Accueil - FDS France',
-  description: 'Bienvenue sur le site officiel du Front Démocratique et Social',
+  title: 'Accueil - FDS Monde',
+  description: 'Bienvenue sur le site officiel du Front Démocratique et Socialiste',
 }
 
 export default function Home() {

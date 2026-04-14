@@ -269,18 +269,28 @@ Rôle:  PRESIDENT
 ### Production (Vercel pour Next.js)
 
 ```bash
+# 1️⃣ Pousser sur GitHub (si pas déjà fait)
+git add .
+git commit -m "ready for production"
+git push origin main
+
+# 2️⃣ Déployer sur Vercel
 cd public-portal
 
 # Installer Vercel CLI
 npm install -g vercel
 
-# Déployer
-vercel
+# Se connecter
+vercel login
 
-# Variables d'env
-vercel env add NEXT_PUBLIC_API_URL
-# https://api.example.com/api/v1
+# Déployer
+vercel --prod
+
+# Variables d'environnement dans Vercel :
+NEXT_PUBLIC_API_URL=https://votre-api.vercel.app/api/v1
 ```
+
+**Résultat :** https://fds-platform.vercel.app
 
 ### Production (Docker)
 

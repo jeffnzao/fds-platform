@@ -5,10 +5,10 @@ export default function Hero() {
     <section className="bg-gradient-hero text-white py-24">
       <div className="container-max text-center">
         <h1 className="text-5xl font-bold mb-6">
-          Construisons l'Afrique que nous méritons
+          Construisons le Gabon que nous méritonss
         </h1>
         <p className="text-xl mb-8 max-w-2xl mx-auto">
-          Le Front Démocratique et Social : Un mouvement de citoyens engagés pour la justice, 
+          Le Front Démocratique et Socialiste : Un mouvement de citoyens engagés pour la justice, 
           la transparence et le développement durable en Afrique.
         </p>
         <div className="flex gap-4 justify-center">

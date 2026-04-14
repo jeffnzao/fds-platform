@@ -22,7 +22,7 @@ export default function Header() {
       <nav className="container-max px-4 py-4 flex justify-between items-center">
         {/* Logo */}
         <Link href="/" className="font-bold text-2xl text-fds-green">
-          FDS France
+          FDS Monde
         </Link>
 
         {/* Desktop Nav */}
