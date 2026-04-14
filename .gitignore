@@ -1,0 +1,34 @@
+# Environnement
+.env
+.env.local
+
+# Node
+node_modules/
+npm-debug.log*
+
+# Build
+dist/
+build/
+
+# Logs
+logs/
+*.log
+
+# Prisma
+backend/prisma/migrations/dev.db
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Docker volumes
+postgres_data/
+redis_data/
+minio_data/
+
+# SSL
+nginx/ssl/

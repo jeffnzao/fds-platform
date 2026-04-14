@@ -1,0 +1,35 @@
+{
+  "name": "@fds/public-portal",
+  "version": "1.0.0",
+  "description": "FDS France - Portail Public (Site Officiel)",
+  "scripts": {
+    "dev": "next dev -p 3001",
+    "build": "next build",
+    "start": "next start -p 3001",
+    "lint": "next lint",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "next": "^14.0.0",
+    "axios": "^1.6.0",
+    "zustand": "^4.4.0",
+    "markdown-it": "^13.0.1",
+    "date-fns": "^2.30.0",
+    "clsx": "^2.0.0",
+    "react-icons": "^4.12.0",
+    "react-toastify": "^9.1.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@types/node": "^20.0.0",
+    "tailwindcss": "^3.3.0",
+    "postcss": "^8.4.0",
+    "autoprefixer": "^10.4.0",
+    "eslint": "^8.0.0",
+    "eslint-config-next": "^14.0.0"
+  }
+}

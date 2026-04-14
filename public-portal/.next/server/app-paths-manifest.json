@@ -1,0 +1,10 @@
+{
+  "/page": "app/page.js",
+  "/diaspora/page": "app/diaspora/page.js",
+  "/le-parti/page": "app/le-parti/page.js",
+  "/blog/page": "app/blog/page.js",
+  "/publications/page": "app/publications/page.js",
+  "/evenements/page": "app/evenements/page.js",
+  "/contact/page": "app/contact/page.js",
+  "/rejoindre/page": "app/rejoindre/page.js"
+}

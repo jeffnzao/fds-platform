@@ -1,0 +1,734 @@
+// schema.prisma — FDS Platform
+// Base de données relationnelle avec multi-tenant par country_id
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── ÉNUMÉRATIONS ───────────────────────────────────────────
+
+enum Role {
+  SUPER_ADMIN              // Secrétariat Général — accès total
+  PRESIDENT                // Président
+  SECRETAIRE_GENERAL       // Secrétaire Général
+  SECRETAIRE_GENERAL_ADJOINT // Secrétaire Général Adjoint
+  TRESORIER_NATIONAL       // Trésorier National
+  RESPONSABLE_PAYS         // Chef de section nationale
+  RESPONSABLE_POLE         // Chef d'un pôle thématique
+  MEMBRE                   // Membre ordinaire
+  OBSERVATEUR              // Lecture seule
+}
+
+enum MemberStatus {
+  ACTIF
+  INACTIF
+  SUSPENDU
+  EN_ATTENTE
+}
+
+enum ProjectStatus {
+  BROUILLON
+  EN_COURS
+  EN_PAUSE
+  TERMINE
+  ANNULE
+}
+
+enum TaskStatus {
+  A_FAIRE
+  EN_COURS
+  REVUE
+  TERMINEE
+}
+
+enum TaskPriority {
+  BASSE
+  NORMALE
+  HAUTE
+  URGENTE
+}
+
+enum AnnouncementTarget {
+  TOUS
+  PAYS
+  POLE
+}
+
+enum DocumentVisibility {
+  PUBLIC
+  PAYS
+  POLE
+  PRIVE
+}
+
+enum MeetingType {
+  HEBDOMADAIRE_PRESIDENT_SG
+  REUNION_SG_POLES
+  PLENIERE_MENSUELLE
+  AUTRE
+}
+
+enum DiasporaProfileType {
+  ETUDIANT
+  ENTREPRENEUR
+  PROFESSIONNEL
+  AUTRE
+}
+
+enum ContentType {
+  ARTICLE
+  POST_RESEAU
+  VIDEO
+  EVENEMENT
+}
+
+enum StrategicPhase {
+  DIAGNOSTIC    // Avril-Juin
+  DEPLOIEMENT   // Juillet-Septembre
+  CONSOLIDATION // Octobre-Decembre
+}
+
+enum ArticleCategory {
+  ECONOMIE
+  DIASPORA
+  SOCIAL
+  INSTITUTIONS
+  CITOYENNETE
+  ACTUALITES
+}
+
+enum PublicationStatus {
+  BROUILLON
+  EN_ATTENTE    // En attente de validation
+  APPROUVE      // Approuvé, prêt à publier
+  PUBLIE
+  ARCHIVE
+}
+
+enum CommentStatus {
+  EN_ATTENTE    // En attente de modération
+  APPROUVE
+  REJETE
+}
+
+// ─── PAYS / SECTIONS ────────────────────────────────────────
+
+model Country {
+  id          String   @id @default(cuid())
+  name        String   // ex: "Gabon", "France", "États-Unis"
+  code        String   @unique // ISO 3166-1 alpha-2: "GA", "FR", "US"
+  flag        String?  // emoji ou URL
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users         User[]
+  poles         Pole[]
+  projects      Project[]
+  documents     Document[]
+  announcements Announcement[]
+  events        Event[]
+  meetings      Meeting[]
+
+  @@map("countries")
+}
+
+// ─── PÔLES THÉMATIQUES ──────────────────────────────────────
+
+model Pole {
+  id          String   @id @default(cuid())
+  name        String   // ex: "Économie", "Santé", "Jeunesse"
+  description String?
+  color       String?  // couleur hex pour l'UI
+  icon        String?  // nom d'icône
+  isActive    Boolean  @default(true)
+  countryId   String
+  country     Country  @relation(fields: [countryId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  members   UserPole[]
+  projects  Project[]
+  documents Document[]
+  messages  Message[]
+  tasks     Task[]
+  reports   Report[]
+  contents  Content[]
+  contacts  Contact[]
+  publications Publication[]
+
+  @@map("poles")
+}
+
+// ─── UTILISATEURS ───────────────────────────────────────────
+
+model User {
+  id             String       @id @default(cuid())
+  email          String       @unique
+  passwordHash   String
+  firstName      String
+  lastName       String
+  phone          String?
+  avatarUrl      String?
+  role           Role         @default(MEMBRE)
+  status         MemberStatus @default(EN_ATTENTE)
+  countryId      String?
+  country        Country?     @relation(fields: [countryId], references: [id])
+  memberNumber   String?      @unique // numéro adhérent
+  joinedAt       DateTime?
+  lastLoginAt    DateTime?
+  emailVerified  Boolean      @default(false)
+  twoFactorEnabled Boolean    @default(false)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  poles             UserPole[]
+  projectsOwned     Project[]          @relation("ProjectOwner")
+  projectMembers    ProjectMember[]
+  tasksAssigned     Task[]             @relation("TaskAssignee")
+  tasksCreated      Task[]             @relation("TaskCreator")
+  documentsUploaded Document[]
+  messagesWritten   Message[]
+  announcementsWritten Announcement[]
+  eventsCreated     Event[]
+  notificationsReceived Notification[]
+  refreshTokens     RefreshToken[]
+  auditLogs         AuditLog[]
+  reportsAuthored    Report[]       @relation("ReportAuthor")
+  reportsReviewed    Report[]       @relation("ReportReviewer")
+  diasporaProfile    DiasporaProfile?
+  contentsAuthored   Content[]
+  contactsCreated    Contact[]
+  interactions       ContactInteraction[]
+  strategicProjects  StrategicProject[]
+  meetingParticipants MeetingParticipant[]
+  articlesAuthored   Article[] @relation("ArticleAuthor")
+  articleApprovals   Article[] @relation("ArticleApprover")
+  publicationsAuthored Publication[] @relation("PublicationAuthor")
+  publicationApprovals Publication[] @relation("PublicationApprover")
+  publicEventsCreated PublicEvent[]
+
+  @@map("users")
+}
+
+model UserPole {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  poleId    String
+  pole      Pole     @relation(fields: [poleId], references: [id], onDelete: Cascade)
+  isLeader  Boolean  @default(false)
+  joinedAt  DateTime @default(now())
+
+  @@unique([userId, poleId])
+  @@map("user_poles")
+}
+
+// ─── PROJETS ────────────────────────────────────────────────
+
+model Project {
+  id          String        @id @default(cuid())
+  title       String
+  description String?
+  status      ProjectStatus @default(BROUILLON)
+  startDate   DateTime?
+  endDate     DateTime?
+  countryId   String
+  country     Country       @relation(fields: [countryId], references: [id])
+  poleId      String?
+  pole        Pole?         @relation(fields: [poleId], references: [id])
+  ownerId     String
+  owner       User          @relation("ProjectOwner", fields: [ownerId], references: [id])
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  members   ProjectMember[]
+  tasks     Task[]
+  documents Document[]
+
+  @@map("projects")
+}
+
+model ProjectMember {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  joinedAt  DateTime @default(now())
+
+  @@unique([projectId, userId])
+  @@map("project_members")
+}
+
+// ─── TÂCHES ─────────────────────────────────────────────────
+
+model Task {
+  id          String       @id @default(cuid())
+  title       String
+  description String?
+  status      TaskStatus   @default(A_FAIRE)
+  priority    TaskPriority @default(NORMALE)
+  dueDate     DateTime?
+  projectId   String?
+  project     Project?     @relation(fields: [projectId], references: [id])
+  poleId      String?
+  pole        Pole?        @relation(fields: [poleId], references: [id])
+  meetingId   String?      // tâche créée post-réunion
+  meeting     Meeting?     @relation(fields: [meetingId], references: [id])
+  assigneeId  String?
+  assignee    User?        @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  creatorId   String
+  creator     User         @relation("TaskCreator", fields: [creatorId], references: [id])
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@map("tasks")
+}
+
+// ─── DOCUMENTS ──────────────────────────────────────────────
+
+model Document {
+  id           String             @id @default(cuid())
+  title        String
+  description  String?
+  fileUrl      String             // URL MinIO présignée
+  fileKey      String             // clé MinIO pour gestion
+  fileSize     Int                // octets
+  mimeType     String
+  visibility   DocumentVisibility @default(POLE)
+  countryId    String?
+  country      Country?           @relation(fields: [countryId], references: [id])
+  poleId       String?
+  pole         Pole?              @relation(fields: [poleId], references: [id])
+  projectId    String?
+  project      Project?           @relation(fields: [projectId], references: [id])
+  uploadedById String
+  uploadedBy   User               @relation(fields: [uploadedById], references: [id])
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  @@map("documents")
+}
+
+// ─── MESSAGERIE ─────────────────────────────────────────────
+
+model Message {
+  id        String   @id @default(cuid())
+  content   String
+  poleId    String
+  pole      Pole     @relation(fields: [poleId], references: [id])
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id])
+  parentId  String?  // réponse à un message
+  parent    Message? @relation("MessageThread", fields: [parentId], references: [id])
+  replies   Message[] @relation("MessageThread")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("messages")
+}
+
+// ─── ANNONCES ───────────────────────────────────────────────
+
+model Announcement {
+  id          String             @id @default(cuid())
+  title       String
+  content     String
+  target      AnnouncementTarget @default(TOUS)
+  countryId   String?
+  country     Country?           @relation(fields: [countryId], references: [id])
+  authorId    String
+  author      User               @relation(fields: [authorId], references: [id])
+  publishedAt DateTime?
+  expiresAt   DateTime?
+  isPinned    Boolean            @default(false)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  @@map("announcements")
+}
+
+// ─── ÉVÉNEMENTS / AGENDA ────────────────────────────────────
+
+model Event {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  location    String?
+  startDate   DateTime
+  endDate     DateTime?
+  isVirtual   Boolean  @default(false)
+  meetingLink String?
+  countryId   String?
+  country     Country? @relation(fields: [countryId], references: [id])
+  creatorId   String
+  creator     User     @relation(fields: [creatorId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("events")
+}
+
+// ─── PRODUCTION INTELLECTUELLE ──────────────────────────────
+
+model Report {
+  id          String   @id @default(cuid())
+  title       String
+  content     String
+  version     Int      @default(1)
+  status      String   @default("BROUILLON") // BROUILLON, EN_REVUE, VALIDE, PUBLIE
+  poleId      String?
+  pole        Pole?    @relation(fields: [poleId], references: [id])
+  authorId    String
+  author      User     @relation("ReportAuthor", fields: [authorId], references: [id])
+  reviewerId  String?
+  reviewer    User?    @relation("ReportReviewer", fields: [reviewerId], references: [id])
+  publishedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("reports")
+}
+
+// ─── GESTION DE LA DIASPORA ────────────────────────────────
+
+model DiasporaProfile {
+  id          String             @id @default(cuid())
+  userId      String             @unique
+  user        User               @relation(fields: [userId], references: [id])
+  profileType DiasporaProfileType
+  location    String             // pays de résidence
+  profession  String?
+  challenges  String?            // problématiques (emploi, bourses, retour)
+  needs       String?            // besoins spécifiques
+  contributions String?          // contributions possibles
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  @@map("diaspora_profiles")
+}
+
+// ─── MODULE COMMUNICATION ───────────────────────────────────
+
+model Content {
+  id          String      @id @default(cuid())
+  title       String
+  content     String
+  type        ContentType
+  scheduledAt DateTime?
+  publishedAt DateTime?
+  platforms   String?     // "facebook,twitter,linkedin"
+  poleId      String?
+  pole        Pole?       @relation(fields: [poleId], references: [id])
+  authorId    String
+  author      User        @relation(fields: [authorId], references: [id])
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@map("contents")
+}
+
+// ─── PARTENARIATS & INSTITUTIONS ────────────────────────────
+
+model Contact {
+  id            String   @id @default(cuid())
+  name          String
+  organization  String?
+  position      String?
+  email         String?
+  phone         String?
+  category      String   // "institution", "partenaire", "media", etc.
+  notes         String?
+  lastContact   DateTime?
+  nextContact   DateTime?
+  poleId        String?
+  pole          Pole?    @relation(fields: [poleId], references: [id])
+  createdById   String
+  createdBy     User     @relation(fields: [createdById], references: [id])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  interactions ContactInteraction[]
+
+  @@map("contacts")
+}
+
+model ContactInteraction {
+  id        String   @id @default(cuid())
+  contactId String
+  contact   Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  type      String   // "meeting", "call", "email"
+  summary   String
+  date      DateTime
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@map("contact_interactions")
+}
+
+// ─── SUIVI STRATÉGIQUE 2026 ────────────────────────────────
+
+model StrategicProject {
+  id          String         @id @default(cuid())
+  title       String
+  description String
+  phase       StrategicPhase
+  objectives  String         // objectifs JSON ou texte
+  timeline    String         // timeline JSON
+  indicators  String?        // indicateurs de suivi
+  responsibleId String?
+  responsible User?          @relation(fields: [responsibleId], references: [id])
+  status      String         @default("PLANIFIE") // PLANIFIE, EN_COURS, TERMINE
+  startDate   DateTime?
+  endDate     DateTime?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@map("strategic_projects")
+}
+
+// ─── RÉUNIONS ───────────────────────────────────────────────
+
+model Meeting {
+  id          String      @id @default(cuid())
+  title       String
+  type        MeetingType @default(AUTRE)
+  agenda      String?
+  notes       String?
+  decisions   String?     // Décisions prises
+  date        DateTime
+  duration    Int?        // durée en minutes
+  countryId   String
+  country     Country     @relation(fields: [countryId], references: [id])
+  minutesUrl  String?     // URL du procès-verbal
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  participants MeetingParticipant[]
+  tasks        Task[]     // tâches créées post-réunion
+
+  @@map("meetings")
+}
+
+model MeetingParticipant {
+  id        String  @id @default(cuid())
+  meetingId String
+  meeting   Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User    @relation(fields: [userId], references: [id])
+  attended  Boolean @default(false)
+
+  @@unique([meetingId, userId])
+  @@map("meeting_participants")
+}
+
+// ─── NOTIFICATIONS ──────────────────────────────────────────
+
+model Notification {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type       String   // "new_message", "task_assigned", "announcement", etc.
+  title      String
+  body       String?
+  link       String?  // URL vers la ressource
+  isRead     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  @@map("notifications")
+}
+
+// ─── TOKENS & SÉCURITÉ ──────────────────────────────────────
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@map("refresh_tokens")
+}
+
+// ─── AUDIT LOG ──────────────────────────────────────────────
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id])
+  action     String   // "user.created", "document.deleted", etc.
+  resource   String?  // "User", "Document", etc.
+  resourceId String?
+  details    Json?    // données supplémentaires
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  @@map("audit_logs")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PORTAIL PUBLIC — Articles, Publications, Événements
+// ═══════════════════════════════════════════════════════════════
+
+// ─── ARTICLES / BLOG ────────────────────────────────────────
+
+model Article {
+  id          String   @id @default(cuid())
+  title       String
+  slug        String   @unique
+  excerpt     String
+  content     String   // Contenu Markdown
+  category    ArticleCategory
+  author      User     @relation("ArticleAuthor", fields: [authorId], references: [id])
+  authorId    String
+  imageUrl    String?  // Couverture de l'article
+  status      PublicationStatus @default(BROUILLON)
+  featured    Boolean  @default(false) // Épinglé en accueil
+  viewCount   Int      @default(0)
+  publishedAt DateTime?
+  approvedBy  User?    @relation("ArticleApprover", fields: [approvedById], references: [id])
+  approvedById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  comments    ArticleComment[]
+
+  @@map("articles")
+}
+
+model ArticleComment {
+  id         String   @id @default(cuid())
+  articleId  String
+  article    Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  author     String   // Nom du commentateur (pas d'ID user)
+  email      String   // Email du commentateur
+  content    String
+  status     CommentStatus @default(EN_ATTENTE)
+  approvedAt DateTime?
+  createdAt  DateTime @default(now())
+
+  @@map("article_comments")
+}
+
+// ─── PUBLICATIONS (Notes, Rapports) ─────────────────────────
+
+model Publication {
+  id          String   @id @default(cuid())
+  title       String
+  slug        String   @unique
+  description String
+  content     String   // Contenu Markdown
+  type        String   // "NOTE_POLITIQUE", "RAPPORT", "TRIBUNE"
+  fileUrl     String?  // PDF téléchargeable
+  author      User     @relation("PublicationAuthor", fields: [authorId], references: [id])
+  authorId    String
+  pole        Pole?    @relation(fields: [poleId], references: [id])
+  poleId      String?
+  imageUrl    String?
+  status      PublicationStatus @default(BROUILLON)
+  viewCount   Int      @default(0)
+  publishedAt DateTime?
+  approvedBy  User?    @relation("PublicationApprover", fields: [approvedById], references: [id])
+  approvedById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("publications")
+}
+
+// ─── ÉVÉNEMENTS PUBLICS ────────────────────────────────────
+
+model PublicEvent {
+  id          String   @id @default(cuid())
+  title       String
+  slug        String   @unique
+  description String
+  location    String?
+  startDate   DateTime
+  endDate     DateTime?
+  imageUrl    String?
+  organizer   String?
+  registrationLink String?
+  status      PublicationStatus @default(BROUILLON)
+  featured    Boolean  @default(false)
+  creatorId   String
+  creator     User     @relation(fields: [creatorId], references: [id])
+  publishedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  registrations EventRegistration[]
+
+  @@map("public_events")
+}
+
+model EventRegistration {
+  id        String   @id @default(cuid())
+  eventId   String
+  event     PublicEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  firstName String
+  lastName  String
+  email     String
+  phone     String?
+  message   String?
+  createdAt DateTime @default(now())
+
+  @@map("event_registrations")
+}
+
+// ─── NEWSLETTER ────────────────────────────────────────────
+
+model NewsletterSubscriber {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  language  String   @default("fr") // fr, en
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  unsubscribedAt DateTime?
+
+  @@map("newsletter_subscribers")
+}
+
+// ─── FORMULAIRE DE CONTACT ────────────────────────────────
+
+model ContactSubmission {
+  id        String   @id @default(cuid())
+  firstName String
+  lastName  String
+  email     String
+  phone     String?
+  subject   String
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@map("contact_submissions")
+}
+
+// ─── ADHÉSIONS / ENGAGEMENT ──────────────────────────────
+
+model Membership {
+  id         String   @id @default(cuid())
+  firstName  String
+  lastName   String
+  email      String   @unique
+  phone      String?
+  pole       String?  // Pôle choisi
+  type       String   // "ADHESION", "VOLONTAIRE"
+  status     String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  notes      String?
+  createdAt  DateTime @default(now())
+  reviewedAt DateTime?
+
+  @@map("membership_requests")
+}

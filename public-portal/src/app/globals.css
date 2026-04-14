@@ -1,0 +1,56 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Variables personnalisées */
+:root {
+  --color-primary: #10B981;
+  --color-dark: #1F2937;
+  --color-light: #F3F4F6;
+}
+
+/* Styles globaux */
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+}
+
+/* Headings */
+h1 {
+  @apply text-4xl font-bold text-fds-dark;
+}
+
+h2 {
+  @apply text-3xl font-bold text-fds-dark;
+}
+
+h3 {
+  @apply text-2xl font-bold text-fds-dark;
+}
+
+/* Buttons */
+.btn-primary {
+  @apply px-6 py-3 bg-fds-green text-white font-semibold rounded-lg hover:bg-green-700 transition;
+}
+
+.btn-secondary {
+  @apply px-6 py-3 border-2 border-fds-green text-fds-green font-semibold rounded-lg hover:bg-fds-light transition;
+}
+
+/* Cards */
+.card {
+  @apply bg-white rounded-lg shadow-md hover:shadow-lg transition p-6;
+}
+
+/* Section spacing */
+.section {
+  @apply py-16 px-4 md:px-8 lg:px-16;
+}
+
+/* Container */
+.container-max {
+  @apply max-w-7xl mx-auto;
+}
